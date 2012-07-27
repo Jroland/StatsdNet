@@ -88,7 +88,7 @@ namespace StatsdNet
             }
 
             if (UseMachineNameFolder)
-                ApplicationName = string.Concat(Environment.MachineName, ".", ApplicationName);
+                ApplicationName = string.Concat(ApplicationName, ".", Environment.MachineName);
 
             _udpClient = new UdpClient(Server.Address.Host, Server.Port);
         }
