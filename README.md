@@ -25,7 +25,7 @@ Provides a nice wrapper for sending Timing information for any Action, Function 
 
 Note that TimeIt will also work with Task based methods by subscribing to the ContinueWith method to record the time to complete the task.  This is however, not the most accurate time measurement as the ContinueWith method is subject to task scheduling.  This method is useful for keeping the main code path cleaner and easier to read by removing the Stopwatch creation and timing buzz code.
 
-### Injected Opinions
+### Default Configuration Options and Opinions
 1. Requires a Url with the format: http://server:port?application=name
 2. All stats key names are stored in the format: ApplicationName.MachineName.Key
 Note: MachineName can be turned off through a [usemachinenamefolder=false] parameter in the Url.
