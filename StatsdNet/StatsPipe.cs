@@ -47,7 +47,7 @@ namespace StatsdNet
         public bool UseMachineNameFolder { get; private set; }
 
         /// <summary>
-        /// Constructs the stats pipe using the default connection string from the config file.  ConnectionString=Move.Statsd.Server.
+        /// Constructs the stats pipe using the default connection string from the config file.  ConnectionString=StatsdNet.Server.
         /// </summary>
         public StatsdPipe()
         {
