@@ -157,7 +157,6 @@ namespace StatsdNet
         /// <param name="func">The function to execute and time.</param>
         /// <param name="key">The unique stat name.  Use dot notation to create folder.</param>
         /// <param name="sampleRate">The ratio of how often this value is sampled.</param>
-        /// <typeparam name="T">The return type of the function.</typeparam>
         /// <returns></returns>
         public Task TimeIt(Func<Task> func, string key, double sampleRate = 1.0)
         {
