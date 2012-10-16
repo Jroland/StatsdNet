@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -12,23 +11,32 @@ namespace StatsdNet.Tests
         public void StatsdPipeConstructsFromDefaultTest()
         {
             var target = new StatsdPipe();
+            Assert.IsNotNull(target.Server);
             Assert.IsTrue(target.Server.Port == 8125);
             Assert.IsTrue(target.Server.Address.Host == "localhost");
-            Assert.IsTrue(target.ApplicationName == string.Concat(Environment.MachineName, ".", "UnitTests"));
+            Assert.IsTrue(target.ApplicationName == string.Concat("UnitTests", ".", Environment.MachineName));
         }
 
         [Test]
-        [ExpectedException(typeof(ConfigurationErrorsException))]
-        public void StatsExceptionOnMissingApplicationName()
+        public void StatsNotActiveOnBadUrl()
         {
-            var target = new StatsdPipe("http://localhost:8125?group=Statsd");
+            var target = new StatsdPipe("TBD");
             Assert.IsTrue(target.Active == false);
+        }
+
+        [Test]
+        public void StatsExceptionOnEventFires()
+        {
+            int errorCount = 0;
+            var target = new StatsdPipe("TBD", x => Interlocked.Increment(ref errorCount));
+            Assert.AreEqual(false, target.Active);
+            Assert.AreEqual(1, errorCount);
         }
         
         [Test]
-        public void StatsPipeShouldReportNotActiveWhenNotConnectionExists()
+        public void StatsPipeShouldReportNotActiveWhenNoConnectionExists()
         {
-            var target = new StatsdPipe(null);
+            var target = new StatsdPipe(null, null);
             Assert.IsTrue(target.Active == false);
         }
 
@@ -37,6 +45,17 @@ namespace StatsdNet.Tests
         {
             var target = new StatsdPipe("http://localhost:1234?application=UnitTests");
             target.Increment("fake");
+        }
+
+        [Test]
+        public void StatsPipeShouldAddEnvironmentIfExists()
+        {
+            var s1 = new StatsdPipe("http://localhost:1234?application=UnitTests&environment=qa");
+            var s2 = new StatsdPipe("http://localhost:1234?application=UnitTests");
+
+            Assert.IsTrue(s1.ApplicationName.Contains(".qa"), "Should have .qa in the application name.");
+            Assert.IsFalse(s2.ApplicationName.Contains(".qa"), "Should not have .qa in the application name.  Was " + s2.ApplicationName);
+            Assert.IsTrue(s1.Active && s2.Active);
         }
 
         [Test]
@@ -81,6 +100,15 @@ namespace StatsdNet.Tests
             stat.TimeIt(() => Task.Factory.StartNew(() => { Thread.Sleep(100); return true; }), "Test");
             Thread.Sleep(200);
             Assert.IsTrue(stat.ElapsedMilliseconds >= 100 && stat.ElapsedMilliseconds < 200);
+        }
+
+        [Test]
+        public void EnsureActionsTimeProperly()
+        {
+            var stat = new StatsdPipeTiming();
+            stat.TimeIt(() => Thread.Sleep(200), "Test");
+
+            Assert.IsTrue(stat.ElapsedMilliseconds >= 200 && stat.ElapsedMilliseconds < 400);
         }
     }
 

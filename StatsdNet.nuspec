@@ -1,0 +1,19 @@
+<package>
+  <metadata>
+    <id>StatsdNet</id>
+    <version>1.0.0.0</version>
+    <title>StatsdNet</title>
+    <authors>James Roland</authors>
+    <owners>James Roland</owners>
+    <licenseUrl></licenseUrl>
+    <projectUrl>https://github.com/Jroland/StatsdNet</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>C# client to send UDP log packets to Statsd using the Etsy pattern.</description>
+    <releaseNotes>
+    </releaseNotes>
+    <copyright>Copyright James Roland 2012</copyright>
+    <tags>Statsd Etsy Graphite</tags>
+    <dependencies>
+    </dependencies>
+  </metadata>
+</package>

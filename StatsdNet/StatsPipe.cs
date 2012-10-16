@@ -18,11 +18,17 @@ namespace StatsdNet
     /// Therefore the ideal use of this library is to try and track as many meaningfull statistics as possible and create
     /// graphs over that data if needed at a later time.
     /// </summary>
-    public class StatsdPipe : IDisposable
+    public class StatsdPipe : IDisposable, IStatsdPipe
     {
+        /// <summary>
+        /// Called if any exception occurs within library.  All exception are swallowed.
+        /// </summary>
+        public event Action<Exception> OnStatsPipeException;
+
         private const string STATS_APPLICATION_NAME = "application";
         private const string STATS_USE_MACHINE_NAME = "usemachinenamefolder";
-        private const string STATS_CONNECTION_SETTING = "StatsdNet.Server";
+        private const string STATS_ENVIRONMENT_NAME = "environment";
+
         private UdpClient _udpClient;
         private readonly Random _random = new Random();
 
@@ -46,52 +52,70 @@ namespace StatsdNet
         /// </summary>
         public bool UseMachineNameFolder { get; private set; }
 
+        #region Constructors...
         /// <summary>
         /// Constructs the stats pipe using the default connection string from the config file.  ConnectionString=StatsdNet.Server.
         /// </summary>
-        public StatsdPipe()
+        /// <param name="onStatsPipeException">Subscribe to any exception that occurs within the library. </param>
+        public StatsdPipe(Action<Exception> onStatsPipeException = null)
         {
-            var connectionString = ConfigurationManager.ConnectionStrings[STATS_CONNECTION_SETTING];
+            var connectionString = ConfigurationManager.ConnectionStrings["StatsdNet.Server"];
 
-            if (connectionString != null) Initialize(connectionString.ConnectionString);
+            if (connectionString != null) Initialize(connectionString.ConnectionString, onStatsPipeException);
         }
 
         /// <summary>
         /// Constructs the stats pipe using a given connection string to a statsd server.
         /// </summary>
-        /// <param name="connectionString">Connection string in the format: http://server:port?application=MyAppName</param>
-        public StatsdPipe(string connectionString)
+        /// <param name="connectionString">Connection string in the format: http://server:port?application=MyAppName&group=MyGroupName</param>
+        /// <param name="onStatsPipeException">Subscribe to any exception that occurs within the library. </param>
+        public StatsdPipe(string connectionString, Action<Exception> onStatsPipeException = null)
         {
-            Initialize(connectionString);
+            Initialize(connectionString, onStatsPipeException);
         }
 
-        private void Initialize(string connectionString)
+        private void Initialize(string connectionString, Action<Exception> onStatsPipeException)
         {
-            if (string.IsNullOrEmpty(connectionString)) return;
-
-            Active = true;
-
-            Server = new UrlBuilder(connectionString);
-
-            ApplicationName = Server.GetParameterValue(STATS_APPLICATION_NAME);
-            if (ApplicationName == null)
-                throw new ConfigurationErrorsException(string.Format("The statsd connection string must contain a application querystring parameter.  Connection: {0}",
-                                                  connectionString));
-
-            var useMachineName = Server.GetParameterValue(STATS_USE_MACHINE_NAME);
-            if (string.IsNullOrEmpty(useMachineName))
-                UseMachineNameFolder = true;
-            else
+            try
             {
-                bool tempBool;
-                UseMachineNameFolder = !bool.TryParse(useMachineName, out tempBool) || tempBool;
+                if (onStatsPipeException != null) OnStatsPipeException += onStatsPipeException;
+                if (string.IsNullOrEmpty(connectionString)) return;
+
+                Active = true;
+
+                Server = new UrlBuilder(connectionString);
+
+                ApplicationName = Server.GetParameterValue(STATS_APPLICATION_NAME);
+                if (ApplicationName == null)
+                    throw new ConfigurationErrorsException(string.Format("The statsd connection string must contain an application querystring parameter.  Connection: {0}",
+                                                      connectionString));
+
+                var environment = Server.GetParameterValue(STATS_ENVIRONMENT_NAME);
+                if (string.IsNullOrEmpty(environment) == false)
+                    ApplicationName = string.Concat(ApplicationName, ".", environment);
+
+                var useMachineName = Server.GetParameterValue(STATS_USE_MACHINE_NAME);
+                if (string.IsNullOrEmpty(useMachineName))
+                    UseMachineNameFolder = true;
+                else
+                {
+                    bool tempBool;
+                    UseMachineNameFolder = !bool.TryParse(useMachineName, out tempBool) || tempBool;
+                }
+
+                if (UseMachineNameFolder)
+                    ApplicationName = string.Concat(ApplicationName, ".", Environment.MachineName);
+
+                _udpClient = new UdpClient(Server.Address.Host, Server.Port);
             }
-
-            if (UseMachineNameFolder)
-                ApplicationName = string.Concat(ApplicationName, ".", Environment.MachineName);
-
-            _udpClient = new UdpClient(Server.Address.Host, Server.Port);
-        }
+            catch (Exception ex)
+            {
+                if (OnStatsPipeException != null)
+                    OnStatsPipeException(ex);
+                Active = false;
+            }
+        } 
+        #endregion
 
         /// <summary>
         /// Records a generic gauge value stat.  Gauge is an absolute value to track as opposed to count per period.
@@ -157,6 +181,7 @@ namespace StatsdNet
         /// <param name="func">The function to execute and time.</param>
         /// <param name="key">The unique stat name.  Use dot notation to create folder.</param>
         /// <param name="sampleRate">The ratio of how often this value is sampled.</param>
+        /// <typeparam name="T">The return type of the function.</typeparam>
         /// <returns></returns>
         public Task TimeIt(Func<Task> func, string key, double sampleRate = 1.0)
         {
@@ -296,10 +321,19 @@ namespace StatsdNet
 
         protected bool DoSend(string stat)
         {
-            var data = Encoding.Default.GetBytes(stat);
+            try
+            {
+                var data = Encoding.Default.GetBytes(stat);
 
-            _udpClient.Send(data, data.Length);
-            return true;
+                _udpClient.Send(data, data.Length);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (OnStatsPipeException != null)
+                    OnStatsPipeException(ex);
+                return false;
+            }
         }
 
         #region IDisposable Members
@@ -308,14 +342,12 @@ namespace StatsdNet
         {
             try
             {
-                if (_udpClient != null)
-                {
-                    _udpClient.Close();
-                }
+                using (_udpClient) { };
             }
             catch (Exception ex)
             {
-                Trace.WriteLine(string.Format("Exception occured in the statdspipe dispose method.  Exception ignored.  Ex:{0}", ex));
+                if (OnStatsPipeException != null)
+                    OnStatsPipeException(ex);
             }
         }
 
