@@ -5,7 +5,7 @@
     <title>StatsdNet</title>
     <authors>James Roland</authors>
     <owners>James Roland</owners>
-    <licenseUrl></licenseUrl>
+    <licenseUrl>https://github.com/Jroland/StatsdNet/blob/master/license.mit</licenseUrl>
     <projectUrl>https://github.com/Jroland/StatsdNet</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>C# client to send UDP log packets to Statsd using the Etsy pattern.</description>

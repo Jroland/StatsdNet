@@ -7,8 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StatsdNet.Tests", "StatsdNe
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{05A093B5-E431-44D7-A7CD-E786F7FF3EC6}"
 	ProjectSection(SolutionItems) = preProject
+		license.mit = license.mit
 		README.md = README.md
-		StatsdNet.nuspec = StatsdNet.nuspec
+		nuget\StatsdNet.nuspec = nuget\StatsdNet.nuspec
 	EndProjectSection
 EndProject
 Global
